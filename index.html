@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Geovisor María Cano</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw/dist/leaflet.draw.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-measure/dist/leaflet-measure.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.css"/>
+<link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+<div id="app">
+
+  <div id="map"></div>
+
+  <div id="timeControl">
+    <input type="range" id="timeSlider" min="0" max="3" value="0">
+    <div id="timeLabel">2005</div>
+  </div>
+
+  <div id="resizeBar"></div>
+
+  <div id="panelInferior">
+
+    <div id="panelConsulta" class="panel-botones">
+      <div class="panel-botones-header">Capas a consultar</div>
+      <div class="panel-botones-body">
+        <label><b>Capa:</b></label>
+        <select id="selectorCapa" onchange="cambiarTabla()"></select>
+        <br><br>
+        <label><b>Filtrar por año:</b></label>
+        <select id="filtroAnio" onchange="filtrarPorAnio()">
+          <option value="todos">Todos</option>
+          <option value="2005">2005</option>
+          <option value="2010">2010</option>
+          <option value="2020">2020</option>
+          <option value="2025">2025</option>
+        </select>
+        <br><br>
+        <button onclick="toggleDashboard()">Mostrar / Ocultar Dashboard</button>
+        <button onclick="toggleTabla()">Mostrar / Ocultar Tabla</button>
+        <button onclick="descargarCapa()">Descargar Capa</button>
+        <button onclick="abrirExportador()" class="btn-export">🗺️ Exportar Reporte</button>
+      </div>
+    </div>
+
+    <div id="dashboard" class="panel-info" style="display:none;">
+      <div class="panel-header">Dashboard</div>
+      <div class="panel-body" id="dashboardContenido"></div>
+    </div>
+
+    <div id="tablaAtributos" class="panel-info">
+      <div class="panel-header">
+        Tabla de atributos
+        <button onclick="maximizarTabla()" style="float:right; background:transparent; border:none; color:white; cursor:pointer;">⛶</button>
+      </div>
+      <div class="panel-body" id="tablaContenido"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== MODAL EXPORTAR ===================== -->
+<div id="modalExport" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <span>🗺️ Exportar Reporte Cartográfico</span>
+      <button onclick="cerrarExportador()" class="modal-close">✕</button>
+    </div>
+
+    <div class="modal-body">
+
+      <div class="export-section">
+        <div class="export-section-title">📋 Información del reporte</div>
+        <label class="export-label">Título principal</label>
+        <input type="text" id="expTitulo" class="export-input" value="Evolución Urbana - Barrio María Cano" placeholder="Título del mapa">
+        <label class="export-label">Subtítulo / descripción</label>
+        <input type="text" id="expSubtitulo" class="export-input" value="Análisis de expansión urbana 2005-2025" placeholder="Subtítulo">
+        <label class="export-label">Autor / Institución</label>
+        <input type="text" id="expAutor" class="export-input" value="" placeholder="Ej: Universidad, IGAC, Nombre del autor">
+        <label class="export-label">Fecha del reporte</label>
+        <input type="text" id="expFecha" class="export-input" placeholder="Ej: Mayo 2026">
+        <label class="export-label">Sistema de referencia</label>
+        <input type="text" id="expSRC" class="export-input" value="MAGNA-SIRGAS / Colombia Bogotá Zone (EPSG:9377)" readonly>
+      </div>
+
+      <div class="export-section">
+        <div class="export-section-title">⚙️ Contenido a incluir</div>
+        <label class="export-check"><input type="checkbox" id="chkDashboard" checked> Gráficas del Dashboard</label>
+        <label class="export-check"><input type="checkbox" id="chkTabla"> Tabla de atributos completa</label>
+        <label class="export-check"><input type="checkbox" id="chkCoordenadas" checked> Información de coordenadas y proyección</label>
+        <label class="export-check"><input type="checkbox" id="chkEscala" checked> Escala y metadatos técnicos</label>
+      </div>
+
+      <div class="export-section">
+        <div class="export-section-title">🗓️ Período a reportar</div>
+        <select id="expAnio" class="export-input">
+          <option value="todos">Todos los años (2005-2025)</option>
+          <option value="2005">2005</option>
+          <option value="2010">2010</option>
+          <option value="2020">2020</option>
+          <option value="2025">2025</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button onclick="cerrarExportador()" class="btn-cancel">Cancelar</button>
+      <button onclick="generarPDF()" class="btn-generate" id="btnGenerar">
+        <span id="btnGenerarTxt">📄 Generar PDF</span>
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===================== POPUP EVOLUCIÓN ===================== -->
+<div id="popupEvolucion" class="popup-evo" style="display:none;">
+  <div class="popup-evo-header">
+    <span id="popupTipo"></span>
+    <button onclick="cerrarPopup()" class="popup-close">✕</button>
+  </div>
+  <div class="popup-evo-body" id="popupBody"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw/dist/leaflet.draw.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-measure/dist/leaflet-measure.js"></script>
+<script src="https://unpkg.com/leaflet.control.layers.tree/L.Control.Layers.Tree.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
